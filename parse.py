@@ -91,16 +91,23 @@ class entry:
     FORMAT_TYPE_HTML      = 1
     
     # Liste à puce
-    _bullet = u"\u00A0\u2219\u00A0"
+    _nbsp = u"\u00A0"
+    _bullet = u"\u2219"
+    _w_bullet = u"\u25E6"
+    _q = u"\u201C\u201D"
 
     # Format de l'entête
-    entete_format = """terme: {}
-prononciation: {}
-nature: {}"""
+    entete_format = (
+        "terme: {}\n"
+        "prononciation: {}\n"
+        "nature: {}"
+    )
     
     # Format d'une variante
-    variante_format = _bullet + "variante #{}: {}"
+    variante_format = _nbsp+_bullet+_nbsp + "variante #{}: {}"
     
+    # Format d'une citation
+    citation_format = _nbsp*3+_w_bullet+_nbsp+"{} ({}):"+_nbsp+_q[0]+"{}"+_q[1]
     
     def __init__(self, mot, entry):
         self.mot = mot
@@ -154,7 +161,11 @@ nature: {}"""
             )
             # Adjoint les éventuelles citations propres à une variante
             for c in v.iterfind("./cit"):
-                pass
+                corps += "\n" + self.citation_format.format(
+                    c.attrib["aut"] or "aut. inc.",
+                    c.attrib["ref"] or "ref. inc.",
+                    c.text
+                )
         # Concaténation des sous-parties0
         return "{}\n{}".format(
             entete,
