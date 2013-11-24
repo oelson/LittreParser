@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
+import sys
+
+if len(sys.argv) < 2:
+    print("give a word")
+    sys.exit(1)
+
+from LittreParser.parse import parser
+from pprint import pprint
+
+p = parser("/home/nelson/Projets/Littré/xmlittre-data")
+try:
+    it = p.get_entries(sys.argv[1])
+except:
+    print("entry not found")
+    exit(2)
+else:
+    for e in it:
+        print(e.format())
+        print("")
