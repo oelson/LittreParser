@@ -212,6 +212,17 @@ class entry:
         return ""
 
 
+    def get_etymologie_as_plaintext(self, entry_):
+        """
+        """
+        etymologies = []
+        rubrique_ = entry_.find("./rubrique[@nom='ÉTYMOLOGIE']")
+        for indent in rubrique_.iter("indent"):
+            etymologies.append(self.li_format.format(indent.text.rstrip()))
+        if etymologies:
+            return "étymologie:\n" + "\n".join(etymologies)
+        return ""
+
     def format(self, format_type=FORMAT_TYPE_PLAINTEXT):
         """
         """
@@ -244,6 +255,8 @@ class entry:
         text += "\n" + self.get_synonymes_as_plaintext(self.entry)
         # Historique
         text += "\n" + self.get_historique_as_plaintext(self.entry)
+        # Étymologie
+        text += "\n" + self.get_etymologie_as_plaintext(self.entry)
         
         return text
 
