@@ -118,6 +118,7 @@ class entry:
         self.mot = mot
         self.entry = entry
 
+
     def __dict__(self):
         """
         Retourne la description de l'objet sous la forme d'un dictionnaire.
@@ -160,6 +161,7 @@ class entry:
             return "variantes:\n" + "\n".join(variantes)
         return ""
 
+
     def get_citations_as_plaintext(self, variante_):
         """
         """
@@ -173,6 +175,7 @@ class entry:
             citations.append(citation)
         return "\n".join(citations)
 
+
     def get_synonymes_as_plaintext(self, entry_):
         """
         """
@@ -182,6 +185,30 @@ class entry:
                 synonymes.append(self.li_format.format(syn.text.rstrip()))
         if synonymes:
             return "synonymes:\n" + "\n".join(synonymes)
+        return ""
+
+    
+    def get_historique_as_plaintext(self, entry_):
+        """
+        """
+        historique = []
+        rubrique_ = entry_.find("./rubrique[@nom='HISTORIQUE']")
+        for indent in rubrique_.iter("indent"):
+            # siècle
+            h = indent.text.rstrip()
+            citations = []
+            for c in indent.iter("cit"):
+                citation = self.citation_format.format(
+                    c.attrib["aut"] or "aut. inc.",
+                    c.attrib["ref"] or "ref. inc.",
+                    c.text
+                )
+                citations.append(citation)
+            if citations:
+                h += "\n" + "\n".join(citations)
+            historique.append(h)
+        if historique:
+            return "historique:\n" + "\n".join(historique)
         return ""
 
 
@@ -200,30 +227,34 @@ class entry:
         """
         Les noms de noeuds XML finissent par un '_'.
         """
+        text = ""
         entete_ = self.entry.find("./entete")
         corps_ = self.entry.find("./corps")
         prononciation_ = entete_.find("./prononciation")
         nature_ = entete_.find("./nature")
         # Entête de la définition
-        entete = self.entete_format.format(
+        text += self.entete_format.format(
             self.entry.attrib["terme"],
             prononciation_.text,
             nature_.text,
         )
-        # Corps de la définition
-        corps = ""
         # Variantes
-        corps += self.get_variantes_as_plaintext(corps_)
+        text += "\n" + self.get_variantes_as_plaintext(corps_)
         # Synonymes
-        corps += self.get_synonymes_as_plaintext(self.entry)
-        # Concaténation des sous-parties
-        return entete + "\n" + corps
+        text += "\n" + self.get_synonymes_as_plaintext(self.entry)
+        # Historique
+        text += "\n" + self.get_historique_as_plaintext(self.entry)
+        
+        return text
+
 
     def format_html(self):
         pass
-    
+
+
     def __repr__(self):
         return self.__str__()
-    
+
+
     def __str__(self):
         return str(self.format())
