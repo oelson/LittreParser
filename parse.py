@@ -110,6 +110,10 @@ class entry:
     # Format d'une citation
     citation_format = _nbsp*3+_w_bullet+_nbsp+"{} ({}):"+_nbsp+_q[0]+"{}"+_q[1]
     
+    # Format d'un item de liste quelconque
+    li_format = _nbsp+_bullet+_nbsp + "{}"
+
+
     def __init__(self, mot, entry):
         self.mot = mot
         self.entry = entry
@@ -167,6 +171,7 @@ class entry:
         corps_ = self.entry.find("./corps")
         corps = ""
         f = True
+        # Parcours des variantes
         for v in corps_.iterfind("./variante"):
             # Ajoute un saut de ligne entre chaque variante
             if f: f = False
@@ -183,11 +188,19 @@ class entry:
                     c.attrib["ref"] or "ref. inc.",
                     c.text
                 )
+        # Parcours des synonymes
+        synonymes = []
+        for synonymes_ in self.entry.iterfind("./rubrique[@nom='SYNONYME']"):
+            for syn in synonymes_.iter("indent"):
+                synonymes.append(self.li_format.format(syn.text.rstrip()))
         # Concaténation des sous-parties
-        return "{}\n{}".format(
+        s = "{}\n{}".format(
             entete,
             corps
         )
+        if synonymes:
+            s += "\nsynonymes:\n" + "\n".join(synonymes)
+        return s
     
     def format_html(self):
         pass
