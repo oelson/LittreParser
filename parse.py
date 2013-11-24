@@ -7,7 +7,6 @@ import xml.etree.ElementTree as ET
 from unidecode import unidecode
 from LittreParser.error import EntryNotFound 
 
-
 def _xml2dict(root):
     """
     Convert an XML node to a dictionnary.
@@ -67,7 +66,7 @@ class parser:
             self.load_xml_file(letter)
         return self._ET_parsers[letter]
     
-    def get_entry(self, name):
+    def get_entries(self, name):
         """
         Récupère un noeud Element correspondant au mot recherché.
         Retourne une instance de la classe "entry".
@@ -76,10 +75,12 @@ class parser:
         name = name.upper()
         letter = name[0]
         p = self.get_parser(letter)
-        node = p.find("./entree[@terme='{}']".format(name))
-        if node is None:
-            raise EntryNotFound("the entry \"{}\" does not exist".format(name))
-        return entry(name, node)
+        # Une entrée peut avoir plusieurs "sens" et par conséquent être
+        # dupliquée
+        for node in p.iterfind("./entree[@terme='{}']".format(name)):
+            if node is None:
+                raise EntryNotFound("the entry \"{}\" does not exist".format(name))
+            yield entry(name, node)
 
 
 class entry:
@@ -119,6 +120,25 @@ class entry:
         """
         return _xml2dict(self.entry)
 
+
+    def get_variante_text(self, v):
+        """
+        Retourne le texte définissant une variante.
+        Ce texte s'étale éventuellement sur des noeuds collés à des morceaux
+        de texte.
+        """
+        text = v.text.rstrip() if v.text else ""
+        # workaround: "find()" ne fonctionne pas, certainement à cause de
+        # l'imbrication de noeuds texte et non-texte au sein d'un même
+        # élément
+        for sem in v.iter("semantique"):
+            if sem.text:
+                text += sem.text.rstrip()
+            if sem.tail:
+                text += sem.tail.rstrip()
+        return text
+
+
     def format(self, format_type=FORMAT_TYPE_PLAINTEXT):
         """
         """
@@ -128,6 +148,7 @@ class entry:
             return self.format_html()
         else:
             raise ValueError
+
     
     def format_plaintext(self):
         """
@@ -148,16 +169,12 @@ class entry:
         f = True
         for v in corps_.iterfind("./variante"):
             # Ajoute un saut de ligne entre chaque variante
-            if f:
-                f = False
-            else:
-                corps += "\n"
-            # Texte de la variante
+            if f: f = False
+            else: corps += "\n"
             id = v.attrib.get("num") or ""
             corps += self.variante_format.format(
                 id,
-                # premier morceau de texte directement inclus dans le noeud
-                next(v.itertext()).strip()
+                self.get_variante_text(v)
             )
             # Adjoint les éventuelles citations propres à une variante
             for c in v.iterfind("./cit"):
@@ -166,7 +183,7 @@ class entry:
                     c.attrib["ref"] or "ref. inc.",
                     c.text
                 )
-        # Concaténation des sous-parties0
+        # Concaténation des sous-parties
         return "{}\n{}".format(
             entete,
             corps
@@ -174,7 +191,7 @@ class entry:
     
     def format_html(self):
         pass
-
+    
     def __repr__(self):
         return self.__str__()
     
