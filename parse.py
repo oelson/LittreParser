@@ -105,13 +105,13 @@ class entry:
     )
     
     # Format d'une variante
-    variante_format = _nbsp+_bullet+_nbsp + "variante #{}: {}"
+    variante_format = _nbsp*2 + "{}."+_nbsp+"{}"
     
     # Format d'une citation
-    citation_format = _nbsp*3+_w_bullet+_nbsp+"{} ({}):"+_nbsp+_q[0]+"{}"+_q[1]
+    citation_format = _nbsp*4+_bullet+_nbsp+"{} ({}):"+_nbsp+_q[0]+"{}"+_q[1]
     
     # Format d'un item de liste quelconque
-    li_format = _nbsp+_bullet+_nbsp + "{}"
+    li_format = _nbsp*2 + _bullet + _nbsp + "{}"
 
 
     def __init__(self, mot, entry):
@@ -142,6 +142,48 @@ class entry:
                 text += sem.tail.rstrip()
         return text
 
+    def get_variantes_as_plaintext(self, corps_):
+        """
+        """
+        variantes = []
+        for v in corps_.iterfind("./variante"):
+            variante = self.variante_format.format(
+                v.attrib.get("num") or "?",
+                self.get_variante_text(v)
+            )
+            # adjoint les éventuelles citations propres à une variante
+            citations = self.get_citations_as_plaintext(v)
+            if citations:
+                variante += "\n" + citations
+            variantes.append(variante)
+        if variantes:
+            return "variantes:\n" + "\n".join(variantes)
+        return ""
+
+    def get_citations_as_plaintext(self, variante_):
+        """
+        """
+        citations = []
+        for c in variante_.iterfind("./cit"):
+            citation = self.citation_format.format(
+                c.attrib["aut"] or "aut. inc.",
+                c.attrib["ref"] or "ref. inc.",
+                c.text
+            )
+            citations.append(citation)
+        return "\n".join(citations)
+
+    def get_synonymes_as_plaintext(self, entry_):
+        """
+        """
+        synonymes = []
+        for synonymes_ in entry_.iterfind("./rubrique[@nom='SYNONYME']"):
+            for syn in synonymes_.iter("indent"):
+                synonymes.append(self.li_format.format(syn.text.rstrip()))
+        if synonymes:
+            return "synonymes:\n" + "\n".join(synonymes)
+        return ""
+
 
     def format(self, format_type=FORMAT_TYPE_PLAINTEXT):
         """
@@ -158,50 +200,25 @@ class entry:
         """
         Les noms de noeuds XML finissent par un '_'.
         """
-        # Entête de la définition
         entete_ = self.entry.find("./entete")
+        corps_ = self.entry.find("./corps")
         prononciation_ = entete_.find("./prononciation")
         nature_ = entete_.find("./nature")
+        # Entête de la définition
         entete = self.entete_format.format(
             self.entry.attrib["terme"],
             prononciation_.text,
             nature_.text,
         )
         # Corps de la définition
-        corps_ = self.entry.find("./corps")
         corps = ""
-        f = True
-        # Parcours des variantes
-        for v in corps_.iterfind("./variante"):
-            # Ajoute un saut de ligne entre chaque variante
-            if f: f = False
-            else: corps += "\n"
-            id = v.attrib.get("num") or ""
-            corps += self.variante_format.format(
-                id,
-                self.get_variante_text(v)
-            )
-            # Adjoint les éventuelles citations propres à une variante
-            for c in v.iterfind("./cit"):
-                corps += "\n" + self.citation_format.format(
-                    c.attrib["aut"] or "aut. inc.",
-                    c.attrib["ref"] or "ref. inc.",
-                    c.text
-                )
-        # Parcours des synonymes
-        synonymes = []
-        for synonymes_ in self.entry.iterfind("./rubrique[@nom='SYNONYME']"):
-            for syn in synonymes_.iter("indent"):
-                synonymes.append(self.li_format.format(syn.text.rstrip()))
+        # Variantes
+        corps += self.get_variantes_as_plaintext(corps_)
+        # Synonymes
+        corps += self.get_synonymes_as_plaintext(self.entry)
         # Concaténation des sous-parties
-        s = "{}\n{}".format(
-            entete,
-            corps
-        )
-        if synonymes:
-            s += "\nsynonymes:\n" + "\n".join(synonymes)
-        return s
-    
+        return entete + "\n" + corps
+
     def format_html(self):
         pass
     
