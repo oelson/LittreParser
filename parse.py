@@ -188,6 +188,8 @@ class entry:
         """
         historique = []
         rubrique_ = entry_.find("./rubrique[@nom='HISTORIQUE']")
+        if not rubrique_:
+            return
         for indent in rubrique_.iter("indent"):
             # siècle
             date = indent.text.rstrip()
