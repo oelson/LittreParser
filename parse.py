@@ -65,11 +65,13 @@ class parser:
         if letter not in self._ET_parsers:
             self.load_xml_file(letter)
         return self._ET_parsers[letter]
-    
+
+
     def get_entries(self, name):
         """
-        Récupère un noeud Element correspondant au mot recherché.
-        Retourne une instance de la classe "entry".
+        Retourne un itérateur d'éléments de la classe "entry" correspondant au
+        mot passé en argument.
+        TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents, faute de frappe, etc...)
         """
         # récupère le parseur adéquat
         name = name.upper()

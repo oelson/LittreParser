@@ -38,6 +38,7 @@ from LittreParser.parse import parser
 p = parser("/home/nelson/Projets/Littré/xmlittre-data")
 
 try:
+    # TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents, faute de frappe, etc...)
     it = p.get_entries(args.mot)
 except:
     print("le mot n'a pas été trouvé", file=sys.stderr)
