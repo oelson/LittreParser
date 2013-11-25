@@ -134,7 +134,7 @@ class entry:
         return text
 
 
-    def get_variantes(self, corps_):
+    def get_variantes(self, corps_, no_quotes=False):
         """
         Retounre les variantes incluses dans le corps de l'entrée sous la forme
         d'un dictionnaire.
@@ -144,9 +144,10 @@ class entry:
             variante = {
                 "num": v.attrib.get("num") or "?",
                 "text": self.get_variante_text(v),
-                # adjoint les éventuelles citations propres à une variante
-                "cit": self.get_citations(v)
             }
+            if not no_quotes:
+                # adjoint les éventuelles citations propres à une variante
+                variante["cit"] = self.get_citations(v)
             variantes.append(variante)
         return variantes
 
@@ -208,11 +209,24 @@ class entry:
         return etymologies
 
 
-    def format(self, format_type=FORMAT_TYPE_PLAINTEXT):
+    def format(self,
+               format_type=FORMAT_TYPE_PLAINTEXT,
+               no_quotes=False,
+               no_synonyms=False,
+               no_history=False,
+               no_etymology=False):
         """
+        Formatte l'entrée selon l'argument "format_type":
+          * en texte simple
+          * en HTML
         """
         if format_type == self.FORMAT_TYPE_PLAINTEXT:
-            return self.format_plaintext()
+            return self.format_plaintext(
+                no_quotes,
+                no_synonyms,
+                no_history,
+                no_etymology
+            )
         elif format_type == self.FORMAT_TYPE_HTML:
             return self.format_html()
         else:
@@ -229,13 +243,14 @@ class entry:
                 v_["num"],
                 v_["text"]
             )
-            # Adjoint les citations
-            for c_ in v_["cit"]:
-                v += self.list_item_plaintext(4, 0) + "{} ({}): {}\n".format(
-                    c_["aut"],
-                    c_["ref"],
-                    c_["text"]
-                )
+            # Adjoint les éventuelles citations
+            if "cit" in v_:
+                for c_ in v_["cit"]:
+                    v += self.list_item_plaintext(4, 0) + "{} ({}): {}\n".format(
+                        c_["aut"],
+                        c_["ref"],
+                        c_["text"]
+                    )
             text += v
         return text
 
@@ -276,15 +291,23 @@ class entry:
         return text
 
 
-    def format_plaintext(self):
+    def format_plaintext(self,
+                         no_quotes,
+                         no_synonyms,
+                         no_history,
+                         no_etymology):
         """
-        Les noms de noeuds XML finissent par un '_'.
+        Formatte l'entrée en texte simple.
+        Il est possible de désactiver la représentation de certaines parties
+        de l'entrée grâce aux arguments nommés "no_*".
+        Par convention, les noms de noeuds XML finissent par un '_'.
         """
         text = ""
         entete_ = self.entry.find("./entete")
         corps_ = self.entry.find("./corps")
         prononciation_ = entete_.find("./prononciation")
         nature_ = entete_.find("./nature")
+
         # Entête de la définition
         text += "Terme: {}\n".format(self.entry.attrib["terme"])
         if prononciation_ is not None:
@@ -292,22 +315,29 @@ class entry:
         if nature_ is not None:
             text += "Nature: {}\n".format(nature_.text)
         text += "\n"
+
         # Variantes
-        variantes = self.get_variantes(corps_)
+        variantes = self.get_variantes(corps_, no_quotes)
         if variantes:
             text += self.format_variantes_plaintext(variantes)+"\n"
+
         # Synonymes
-        synonymes = self.get_synonymes(self.entry)
-        if synonymes:
-            text += self.format_synonymes_plaintext(synonymes)+"\n"
+        if not no_synonyms:
+            synonymes = self.get_synonymes(self.entry)
+            if synonymes:
+                text += self.format_synonymes_plaintext(synonymes)+"\n"
+
         # Historique
-        historique = self.get_historique(self.entry)
-        if historique:
-            text += self.format_historique_plaintext(historique)+"\n"
+        if not no_history:
+            historique = self.get_historique(self.entry)
+            if historique:
+                text += self.format_historique_plaintext(historique)+"\n"
+
         # Étymologie
-        etymologies = self.get_etymologie(self.entry)
-        if etymologies:
-            text += self.format_etymologies(etymologies)+"\n"
+        if not no_etymology:
+            etymologies = self.get_etymologie(self.entry)
+            if etymologies:
+                text += self.format_etymologies(etymologies)+"\n"
         
         return text
 

@@ -1,22 +1,52 @@
 #!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 
+"""
+Ligne de commande
+"""
+
+import argparse
+
+parser = argparse.ArgumentParser(description="Dictionnaire Littré en ligne de commande")
+parser.add_argument("mot", help="le mot à rechercher")
+parser.add_argument("-Q", "--no-quotes", action="store_true",
+    help="désactive l'affichage des citations relatives au mot")
+parser.add_argument("-S", "--no-synonyms", action="store_true",
+    help="désactive l'affichage des synonymes du mot")
+parser.add_argument("-H", "--no-history", action="store_true",
+    help="désactive l'affichage de l'historique du mot")
+parser.add_argument("-E", "--no-etymology", action="store_true",
+    help="désactive l'affichage de l'étymologie du mot")
+parser.add_argument("-s", "--short", action="store_true",
+    help="affiche uniquement le mot et ses variantes. équivalent à -SHEQ")
+args = parser.parse_args()
+
+if args.short:
+    args.no_quotes = True
+    args.no_synonyms = True
+    args.no_history = True
+    args.no_etymology = True
+
+"""
+Récupération de la définition recherchée
+"""
+
 import sys
 
-if len(sys.argv) < 2:
-    print("give a word")
-    sys.exit(1)
-
 from LittreParser.parse import parser
-from pprint import pprint
 
 p = parser("/home/nelson/Projets/Littré/xmlittre-data")
+
 try:
-    it = p.get_entries(sys.argv[1])
+    it = p.get_entries(args.mot)
 except:
-    print("entry not found")
-    exit(2)
+    print("le mot n'a pas été trouvé", file=sys.stderr)
+    exit(1)
 else:
     for e in it:
-        print(e.format())
-        print("")
+        print(e.format(
+            no_quotes=args.no_quotes,
+            no_synonyms=args.no_synonyms,
+            no_history=args.no_history,
+            no_etymology=args.no_etymology
+        ))
