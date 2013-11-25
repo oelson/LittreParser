@@ -122,15 +122,15 @@ class entry:
         Ce texte s'étale éventuellement sur des noeuds collés à des morceaux
         de texte.
         """
-        text = v.text.rstrip() if v.text else ""
+        text = v.text.replace("\n", "") if v.text else ""
         # workaround: "find()" ne fonctionne pas, certainement à cause de
         # l'imbrication de noeuds texte et non-texte au sein d'un même
         # élément
         for sem in v.iter("semantique"):
             if sem.text:
-                text += sem.text.rstrip()
+                text += sem.text.replace("\n", "")
             if sem.tail:
-                text += sem.tail.rstrip()
+                text += sem.tail.replace("\n", "")
         return text
 
 
