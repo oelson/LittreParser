@@ -142,14 +142,23 @@ class entry:
         d'un dictionnaire.
         """
         variantes = []
-        for v in corps_.iterfind("./variante"):
+        for v_ in corps_.iter("variante"):
             variante = {
-                "num": v.attrib.get("num") or "?",
-                "text": self.get_variante_text(v),
+                "num": v_.attrib.get("num") or "?",
+                "text": self.get_variante_text(v_),
+                "indent": []
             }
+            # adjoint les éventuelles citations propres à une variante
             if not no_quotes:
-                # adjoint les éventuelles citations propres à une variante
-                variante["cit"] = self.get_citations(v)
+                variante["cit"] = self.get_citations(v_)
+            # recherche les sous-parties
+            for i_ in v_.iter("indent"):
+                subtext = i_.text.rstrip()
+                citations = self.get_citations(i_)
+                variante["indent"].append({
+                    "text": subtext,
+                    "cit": citations
+                })
             variantes.append(variante)
         return variantes
 
@@ -209,7 +218,7 @@ class entry:
         etymologies = []
         rubrique_ = entry_.find("./rubrique[@nom='ÉTYMOLOGIE']")
         for indent in rubrique_.iter("indent"):
-            etymologies.append(indent.text.rstrip())
+            etymologies.append(_gettext(indent).rstrip())
         return etymologies
 
 
@@ -236,6 +245,18 @@ class entry:
         else:
             raise ValueError
 
+    
+    def format_citation_plaintext(self, cit, level=0, li_style=0):
+        """
+        Formatte une citation en texte simple.
+        """
+        li = self.list_item_plaintext(level, li_style)
+        li += "{} ({}): {}\n".format(
+            cit["aut"],
+            cit["ref"],
+            cit["text"]
+        )
+        return li
 
     def format_variantes_plaintext(self, variantes):
         """
@@ -250,11 +271,15 @@ class entry:
             # Adjoint les éventuelles citations
             if "cit" in v_:
                 for c_ in v_["cit"]:
-                    v += self.list_item_plaintext(4, 0) + "{} ({}): {}\n".format(
-                        c_["aut"],
-                        c_["ref"],
-                        c_["text"]
-                    )
+                    v += self.format_citation_plaintext(c_, 4, 0)
+            # Adjoint les éventuelles sous-parties
+            for i_ in v_["indent"]:
+                v += self.list_item_plaintext(4, 0) + "{}\n".format(
+                    i_["text"]
+                )
+                # citations liées à la sous-partie
+                for c_ in i_["cit"]:
+                    v += self.format_citation_plaintext(c_, 6, 1)
             text += v
         return text
 
