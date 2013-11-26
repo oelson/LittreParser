@@ -93,11 +93,13 @@ class entry:
     FORMAT_TYPE_PLAINTEXT = 0
     FORMAT_TYPE_HTML      = 1
     
-    # Liste à puce
+    # Éléments de formattage en texte simple
     _nbsp = u"\u00A0"
     _bullet = u"\u2219\u25E6"
     _q = u"\u201C\u201D"
 
+    # Séparateur de parties de la définition
+    _subpart_separator = "\u2015"*10+"\n"
 
     def __init__(self, mot, entry):
         self.mot = mot
@@ -111,11 +113,19 @@ class entry:
         return _xml2dict(self.entry)
 
 
-    def list_item_plaintext(self, indent=2, level=0):
+    def list_item_plaintext(self, indent=2, li_type=0, li_count=-1):
         """
         Formatte un élement de liste à puce.
+        Si /li_type/ vaut -1, alors la liste est numérique et la puce aura pour
+        valeur la variable /li_count/.
         """
-        return self._nbsp*indent + (self._bullet[level] if level != -1 else "") + self._nbsp
+        if li_type == -1:
+            # l'item de liste est un nombre
+            bullet = str(li_count)+"."
+        else:
+            # l'item de liste est une "puce"
+            bullet = self._bullet[li_type]
+        return self._nbsp * indent + bullet + self._nbsp
 
 
     def get_variante_text(self, v):
@@ -144,7 +154,7 @@ class entry:
         variantes = []
         for v_ in corps_.iter("variante"):
             variante = {
-                "num": v_.attrib.get("num") or "?",
+                "num": int(v_.attrib.get("num") or -1),
                 "text": self.get_variante_text(v_),
                 "indent": []
             }
@@ -234,16 +244,18 @@ class entry:
           * en HTML
         """
         if format_type == self.FORMAT_TYPE_PLAINTEXT:
-            return self.format_plaintext(
+            text = self.format_plaintext(
                 no_quotes,
                 no_synonyms,
                 no_history,
                 no_etymology
             )
         elif format_type == self.FORMAT_TYPE_HTML:
-            return self.format_html()
+            text = self.format_html()
         else:
             raise ValueError
+        # supprime la nouvelle ligne de fin
+        return text[0:-1]
 
     
     def format_citation_plaintext(self, cit, level=0, li_style=0):
@@ -258,16 +270,24 @@ class entry:
         )
         return li
 
+
     def format_variantes_plaintext(self, variantes):
         """
         Formatte les variantes en texte simple.
         """
         text = "Variantes:\n"
-        for v_ in variantes:
-            v = self.list_item_plaintext(2, -1) + "{}. {}\n".format(
-                v_["num"],
-                v_["text"]
+        for (li_count, v_) in enumerate(variantes):
+            # Construit un item de liste numérique
+            if v_["num"] == -1:
+                li_index = li_count+1
+            else:
+                li_index = v_["num"]
+            v = self.list_item_plaintext(
+                2,
+                -1,
+                li_index
             )
+            v += v_["text"] + "\n"
             # Adjoint les éventuelles citations
             if "cit" in v_:
                 for c_ in v_["cit"]:
@@ -343,30 +363,33 @@ class entry:
             text += "Prononciation: {}\n".format(prononciation_.text)
         if nature_ is not None:
             text += "Nature: {}\n".format(nature_.text)
-        text += "\n"
 
         # Variantes
         variantes = self.get_variantes(corps_, no_quotes)
         if variantes:
-            text += self.format_variantes_plaintext(variantes)+"\n"
+            text += self._subpart_separator
+            text += self.format_variantes_plaintext(variantes)
 
         # Synonymes
         if not no_synonyms:
             synonymes = self.get_synonymes(self.entry)
             if synonymes:
-                text += self.format_synonymes_plaintext(synonymes)+"\n"
+                text += self._subpart_separator
+                text += self.format_synonymes_plaintext(synonymes)
 
         # Historique
         if not no_history:
             historique = self.get_historique(self.entry)
             if historique:
-                text += self.format_historique_plaintext(historique)+"\n"
+                text += self._subpart_separator
+                text += self.format_historique_plaintext(historique)
 
         # Étymologie
         if not no_etymology:
             etymologies = self.get_etymologie(self.entry)
             if etymologies:
-                text += self.format_etymologies(etymologies)+"\n"
+                text += self._subpart_separator
+                text += self.format_etymologies(etymologies)
         
         return text
 
