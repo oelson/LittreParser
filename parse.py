@@ -167,7 +167,15 @@ class entry:
                 variante["cit"] = self.get_citations(v_)
             # recherche les sous-parties
             for i_ in v_.iter("indent"):
-                subtext = _gettext(i_).rstrip()
+                #subtext = _gettext(i_).rstrip()
+                subtext = i_.text or ""
+                subtext = subtext.rstrip()
+                # wordaround
+                for s_ in i_.iter("semantique"):
+                    s_text = s_.text or ""
+                    s_text = s_text.rstrip()
+                    subtext += s_text
+                # les sous-parties peuvent contenir des citations
                 citations = self.get_citations(i_)
                 variante["indent"].append({
                     "text": subtext,
