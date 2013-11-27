@@ -2,6 +2,7 @@
 
 __all__ = ["parser", "entry"]
 
+import textwrap
 import xml.etree.ElementTree as ET
 
 from unidecode import unidecode
@@ -104,6 +105,9 @@ class entry:
     def __init__(self, mot, entry):
         self.mot = mot
         self.entry = entry
+        # outil de remplissage de texte
+        self.tw = textwrap.TextWrapper()
+        self.screen_width = 80
 
 
     def __dict__(self):
@@ -263,12 +267,21 @@ class entry:
         Formatte une citation en texte simple.
         """
         li = self.list_item_plaintext(level, li_style)
-        li += "{} ({}): {}\n".format(
+        c_text = "{} ({}): {}".format(
             cit["aut"],
             cit["ref"],
             cit["text"]
         )
-        return li
+        c_text = self.wrap(c_text, 0, level+2)
+        return li + c_text + "\n"
+
+
+    def wrap(self, text, initial_indent=0, subsequent_indent=0):
+        """
+        """
+        self.tw.width = self.screen_width - initial_indent
+        self.tw.subsequent_indent = ' ' * subsequent_indent
+        return self.tw.fill(text)
 
 
     def format_variantes_plaintext(self, variantes):
@@ -287,15 +300,18 @@ class entry:
                 -1,
                 li_index
             )
-            v += v_["text"] + "\n"
+            v_text = self.wrap(v_["text"], 2, 5)
+            v += v_text + "\n"
             # Adjoint les éventuelles citations
             if "cit" in v_:
                 for c_ in v_["cit"]:
                     v += self.format_citation_plaintext(c_, 4, 0)
             # Adjoint les éventuelles sous-parties
             for i_ in v_["indent"]:
+                i_text = i_["text"]
+                i_text = self.wrap(i_text, 0, 6)
                 v += self.list_item_plaintext(4, 0) + "{}\n".format(
-                    i_["text"]
+                    i_text
                 )
                 # citations liées à la sous-partie
                 for c_ in i_["cit"]:
