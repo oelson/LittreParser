@@ -23,11 +23,13 @@ def _xml2dict(root):
         })
     return out
 
+
 def _gettext(elem):
     """
     Équivalent DOM de la propriété "innerText"
     """
     return "".join(elem.itertext())
+
 
 class parser:
     """
@@ -86,50 +88,34 @@ class parser:
             yield entry(name, node)
 
 
+    def get_entries_as_dict(self, name):
+        """
+        Retourne les différents sens d'un mot sous la forme d'un dictionnaire
+        dont les clés sont les indices de sens et les valeurs des entrées
+        formattées sous forme d'arborescence.
+        """
+        meanings = {}
+        for entry in self.get_entries(name):
+            meanings[entry.get_sens_id()] = entry.format_as_dict()
+        return meanings
+
+
 class entry:
     """
     Une entrée du dictionnaire générée par le parseur.
     Une entrée correspond à une définition.
     """
-    FORMAT_TYPE_PLAINTEXT = 0
-    FORMAT_TYPE_HTML      = 1
-    
-    # Éléments de formattage en texte simple
-    _nbsp = u"\u00A0"
-    _bullet = u"\u2219\u25E6"
-    _q = u"\u201C\u201D"
-
-    # Séparateur de parties de la définition
-    _subpart_separator = "\u2015"*10+"\n"
 
     def __init__(self, mot, entry):
         self.mot = mot
         self.entry = entry
-        # outil de remplissage de texte
-        self.tw = textwrap.TextWrapper()
-        self.screen_width = 80
 
 
-    def __dict__(self):
+    def get_sens_id(self):
         """
-        Retourne la description de l'objet sous la forme d'un dictionnaire.
+        Retourne l'indice de sens de la définition.
         """
-        return _xml2dict(self.entry)
-
-
-    def list_item_plaintext(self, indent=2, li_type=0, li_count=-1):
-        """
-        Formatte un élement de liste à puce.
-        Si /li_type/ vaut -1, alors la liste est numérique et la puce aura pour
-        valeur la variable /li_count/.
-        """
-        if li_type == -1:
-            # l'item de liste est un nombre
-            bullet = str(li_count)+"."
-        else:
-            # l'item de liste est une "puce"
-            bullet = self._bullet[li_type]
-        return self._nbsp * indent + bullet + self._nbsp
+        return int(self.entry.attrib["sens"] or 1)
 
 
     def get_variante_text(self, v):
@@ -242,6 +228,57 @@ class entry:
         for indent in rubrique_.iter("indent"):
             etymologies.append(_gettext(indent).rstrip())
         return etymologies
+
+
+    def get_entries_as_dict(self):
+        """
+        """
+        pass
+
+class entry_formatter:
+    """
+    Classe de formattage d'une entrée.
+    Les formats supportés sont:
+        * le texte simple
+        * le HTML
+    """
+    FORMAT_TYPE_PLAINTEXT = 0
+    FORMAT_TYPE_HTML      = 1
+
+    # Éléments de formattage en texte simple
+    _nbsp = u"\u00A0"
+    _bullet = u"\u2219\u25E6"
+    _q = u"\u201C\u201D"
+
+    # Séparateur de parties de la définition
+    _subpart_separator = "\u2015"*10+"\n"
+
+
+    def __init__(self, e, format_type=FORMAT_TYPE_PLAINTEXT):
+        """
+        """
+        if not isinstance(e, entry):
+            raise ValueError
+        self.entry = e
+        self.format_type = format_type
+        # outil de remplissage de texte
+        self.tw = textwrap.TextWrapper()
+        self.screen_width = 80
+
+
+    def list_item_plaintext(self, indent=2, li_type=0, li_count=-1):
+        """
+        Formatte un élement de liste à puce.
+        Si /li_type/ vaut -1, alors la liste est numérique et la puce aura pour
+        valeur la variable /li_count/.
+        """
+        if li_type == -1:
+            # l'item de liste est un nombre
+            bullet = str(li_count)+"."
+        else:
+            # l'item de liste est une "puce"
+            bullet = self._bullet[li_type]
+        return self._nbsp * indent + bullet + self._nbsp
 
 
     def format(self,
