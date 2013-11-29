@@ -346,11 +346,13 @@ class entry:
         for h_ in historique:
             text += self.list_item_plaintext() + h_["date"] + "\n"
             for c_ in h_["cit"]:
-                text += self.list_item_plaintext(4, 1) + "{} ({}): {}\n".format(
+                c_text = self.list_item_plaintext(4, 1) + "{} ({}): {}".format(
                     c_["aut"],
                     c_["ref"],
                     c_["text"]
                 )
+                c_text = self.wrap(c_text, 4, 6)
+                text += c_text + "\n"
         return text
 
 
@@ -360,7 +362,9 @@ class entry:
         """
         text = "Étymologie:\n"
         for e_ in etymologie:
-            text += self.list_item_plaintext() + e_ + "\n"
+            e_text = self.list_item_plaintext() + e_
+            e_text = self.wrap(e_text, 2, 4)
+            text += e_text + "\n"
         return text
 
 
