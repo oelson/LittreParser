@@ -33,21 +33,24 @@ Récupération de la définition recherchée
 
 import sys
 
-from LittreParser.parse import parser
+from LittreParser.parse import parser, entry_formatter
+from LittreParser.error import EntryNotFound
 
 p = parser("/home/nelson/Projets/Littré/xmlittre-data")
 
 try:
-    # TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents, faute de frappe, etc...)
-    it = p.get_entries(args.mot)
-except:
+    # TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents,
+    # faute de frappe, etc...)
+    entries = p.get_entries_as_dict(
+        args.mot,
+        no_quotes=args.no_quotes,
+        no_synonyms=args.no_synonyms,
+        no_history=args.no_history,
+        no_etymology=args.no_etymology
+    )
+except EntryNotFound:
     print("le mot n'a pas été trouvé", file=sys.stderr)
     exit(1)
-else:
-    for e in it:
-        print(e.format(
-            no_quotes=args.no_quotes,
-            no_synonyms=args.no_synonyms,
-            no_history=args.no_history,
-            no_etymology=args.no_etymology
-        ))
+
+ef = entry_formatter(entries)
+print(ef.format_plaintext())
