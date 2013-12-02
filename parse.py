@@ -88,16 +88,30 @@ class parser:
             yield entry(name, node)
 
 
-    def get_entries_as_dict(self, name):
+    def get_entries_as_dict(self,
+                            name,
+                            no_quotes=False,
+                            no_synonyms=False,
+                            no_history=False,
+                            no_etymology=False):
         """
         Retourne les différents sens d'un mot sous la forme d'un dictionnaire
         dont les clés sont les indices de sens et les valeurs des entrées
         formattées sous forme d'arborescence.
         """
-        meanings = {}
-        for entry in self.get_entries(name):
-            meanings[entry.get_sens_id()] = entry.format_as_dict()
-        return meanings
+        definition = {
+            "terme": name.upper(),
+            "sens": {}
+        }
+        for i, entry in enumerate(self.get_entries(name)):
+            key = entry.get_sens_id() or i
+            definition["sens"][key] = entry.format_as_dict(
+                no_quotes,
+                no_synonyms,
+                no_history,
+                no_etymology
+            )
+        return definition
 
 
 class entry:
@@ -115,7 +129,7 @@ class entry:
         """
         Retourne l'indice de sens de la définition.
         """
-        return int(self.entry.attrib["sens"] or 1)
+        return int(self.entry.attrib.get("sens") or 1)
 
 
     def get_variante_text(self, v):
@@ -245,7 +259,6 @@ class entry:
 
         e = {
             "entete": {
-                "mot": self.entry.attrib["terme"],
                 "prononciation": prononciation_.text,
                 "nature": nature_.text
             }
@@ -424,9 +437,8 @@ class entry_formatter:
         Formatte l'entrée en texte simple.
         """
         text = ""
-        for e in entries:
-            # TODO
-            pass
+        #for e in entries:
+        #    pass
         return text
 
 
