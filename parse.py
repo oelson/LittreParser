@@ -441,28 +441,28 @@ class entry_formatter:
                 )
             # Variantes du terme
             if "variantes" in definition:
-                text += "VARIANTES:\n"
+                text += "\nVARIANTES:\n"
                 text += self.format_variantes(
                     definition["variantes"],
                     initial_indent_level
                 )
             # Synonymes
             if "synonymes" in definition:
-                text += "SYNONYMES:\n"
+                text += "\nSYNONYMES:\n"
                 text += self.format_synonymes(
                     definition["synonymes"],
                     initial_indent_level
                 )
             # Historique
             if "historique" in definition:
-                text += "HISTORIQUE:\n"
+                text += "\nHISTORIQUE:\n"
                 text += self.format_historique(
                     definition["historique"],
                     initial_indent_level
                 )
             # Étymologie
             if "etymologie" in definition:
-                text += "ÉTYMOLOGIE:\n"
+                text += "\nÉTYMOLOGIE:\n"
                 text += self.format_etymologies(
                     definition["etymologie"],
                     initial_indent_level
