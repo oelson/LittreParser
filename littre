@@ -31,12 +31,19 @@ if args.short:
 Récupération de la définition recherchée
 """
 
-import sys
+import os, sys
+
+# Récupère l'emplacement du dossier contenant le dictionnaire
+xmlittre_directory = os.environ.get("XMLITTRE_DIRECTORY")
+
+if not xmlittre_directory:
+    print("la variable d'environnement \"XMLITTRE_DIRECTORY\" doit exister", file=sys.stderr)
+    sys.exit(1)
 
 from LittreParser.parse import parser, entry_formatter
 from LittreParser.error import EntryNotFound
 
-p = parser("/home/nelson/Projets/Littré/xmlittre-data")
+p = parser(xmlittre_directory)
 
 try:
     # TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents,
@@ -50,7 +57,7 @@ try:
     )
 except EntryNotFound:
     print("le mot n'a pas été trouvé", file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 ef = entry_formatter(entries)
-print(ef.format_plaintext())
+print(ef)

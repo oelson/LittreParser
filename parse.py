@@ -297,8 +297,6 @@ class entry_formatter:
         * le texte simple
         * le HTML
     """
-    FORMAT_TYPE_PLAINTEXT = 0
-    FORMAT_TYPE_HTML      = 1
 
     # Éléments de formattage en texte simple
     _nbsp = u"\u00A0"
@@ -306,20 +304,20 @@ class entry_formatter:
     _q = u"\u201C\u201D"
 
     # Séparateur de parties de la définition
-    _subpart_separator = "\u2015"*10+"\n"
+    _subpart_separator = "\u2015"*24
+
+    # Format de citation
+    _citation_format = "{} ({}): "+_q[0]+"{}"+_q[1]
+
+    # Nombre d'espace par niveau d'indentation
+    _indent_factor = 2
 
 
     def __init__(self, entries):
-        # l'entrée est un dictionnaire formatté par
-        # /parser.get_entries_as_dict/
         self.entries = entries
 
-        # outil de remplissage de texte
-        self.tw = textwrap.TextWrapper()
-        self.screen_width = 80
 
-
-    def list_item_plaintext(self, indent=2, li_type=0, li_count=-1):
+    def list_item(self, level=2, li_type=0, li_count=-1):
         """
         Formatte un élement de liste à puce.
         Si /li_type/ vaut -1, alors la liste est numérique et la puce aura pour
@@ -331,119 +329,146 @@ class entry_formatter:
         else:
             # l'item de liste est une "puce"
             bullet = self._bullet[li_type]
-        return self._nbsp * indent + bullet + self._nbsp
+        return self._nbsp * level * self._indent_factor + bullet + self._nbsp
+
+    
+    def format_entete(self, entete):
+        """
+        Formatte une entête de définition en texte simple.
+        """
+        text = "PRONONCIATION: '{}'\nNATURE: {}".format(
+            entete["prononciation"],
+            entete["nature"]
+        )
+        return text
 
 
-    def format_citation_plaintext(self, cit, level=0, li_style=0):
+    def format_citation(self, cit, level=0, li_style=0):
         """
         Formatte une citation en texte simple.
         """
-        li = self.list_item_plaintext(level, li_style)
-        c_text = "{} ({}): {}".format(
+        li = self.list_item(level, li_style)
+        c_text = self._citation_format.format(
             cit["aut"],
             cit["ref"],
             cit["text"]
         )
-        c_text = self.wrap(c_text, 0, level+2)
         return li + c_text + "\n"
 
 
-    def wrap(self, text, initial_indent=0, subsequent_indent=0):
-        """
-        """
-        self.tw.width = self.screen_width - initial_indent
-        self.tw.subsequent_indent = ' ' * subsequent_indent
-        return self.tw.fill(text)
-
-
-    def format_variantes_plaintext(self, variantes):
+    def format_variantes(self, variantes, base_indent_level=1):
         """
         Formatte les variantes en texte simple.
         """
-        text = "Variantes:\n"
-        for (li_count, v_) in enumerate(variantes):
+        text = ""
+        for li_count, v_ in enumerate(variantes):
             # Construit un item de liste numérique
             if v_["num"] == -1:
                 li_index = li_count+1
             else:
                 li_index = v_["num"]
-            v = self.list_item_plaintext(
-                2,
+            v = self.list_item(
+                base_indent_level,
                 -1,
                 li_index
             )
-            v_text = self.wrap(v_["text"], 2, 5)
-            v += v_text + "\n"
+            v += v_["text"] + "\n"
             # Adjoint les éventuelles citations
             if "cit" in v_:
                 for c_ in v_["cit"]:
-                    v += self.format_citation_plaintext(c_, 4, 0)
+                    v += self.format_citation(c_, base_indent_level+1, 0)
             # Adjoint les éventuelles sous-parties
             for i_ in v_["indent"]:
-                i_text = i_["text"]
-                i_text = self.wrap(i_text, 0, 6)
-                v += self.list_item_plaintext(4, 0) + "{}\n".format(
-                    i_text
-                )
+                v += self.list_item(base_indent_level+1, 0)
+                v += "{}\n".format(i_["text"])
                 # citations liées à la sous-partie
                 for c_ in i_["cit"]:
-                    v += self.format_citation_plaintext(c_, 6, 1)
+                    v += self.format_citation(c_, base_indent_level+2, 1)
             text += v
         return text
 
 
-    def format_synonymes_plaintext(self, synonymes):
+    def format_synonymes(self, synonymes, base_indent_level=1):
         """
         Formatte une liste de synonymes en texte simple.
         """
-        text = "Synonymes:\n"
+        text = ""
         for s_ in synonymes:
-            text += self.list_item_plaintext() + s_ + "\n"
+            text += self.list_item(base_indent_level, 1) + s_ + "\n"
         return text
 
 
-    def format_historique_plaintext(self, historique):
+    def format_historique(self, historique, base_indent_level=1):
         """
         Formatte une historique de définition en texte simple.
         """
-        text = "Historique:\n"
+        text = ""
         for h_ in historique:
-            text += self.list_item_plaintext() + h_["date"] + "\n"
+            text += self.list_item(base_indent_level, 0) + h_["date"] + "\n"
             for c_ in h_["cit"]:
-                c_text = self.list_item_plaintext(4, 1) + "{} ({}): {}".format(
-                    c_["aut"],
-                    c_["ref"],
-                    c_["text"]
-                )
-                c_text = self.wrap(c_text, 4, 6)
-                text += c_text + "\n"
+                text += self.format_citation(c_, base_indent_level+1, 1)
         return text
 
 
-    def format_etymologies(self, etymologie):
+    def format_etymologies(self, etymologie, base_indent_level=2):
         """
         Formatte une liste d'étymologie en texte simple.
         """
-        text = "Étymologie:\n"
+        text = ""
         for e_ in etymologie:
-            e_text = self.list_item_plaintext() + e_
-            e_text = self.wrap(e_text, 2, 4)
-            text += e_text + "\n"
+            text += self.list_item(base_indent_level, 0) + e_ + "\n"
         return text
 
 
-    def format_plaintext(self):
+    def format(self):
         """
         Formatte l'entrée en texte simple.
         """
-        text = ""
-        #for e in entries:
-        #    pass
+        text = "TERME: {}\n".format(self.entries["terme"])
+        # les différents sens d'une entrée sont indexés par un indice numérique
+        if len(self.entries["sens"]) == 1:
+            initial_indent_level = 0
+            print_sens_separator = False
+        else:
+            initial_indent_level = 1
+            print_sens_separator = True
+
+        for sens_id, definition in self.entries["sens"].items():
+            if print_sens_separator:
+                text += "{}\nSENS #{}\n".format(
+                    self._subpart_separator,
+                    sens_id
+                )
+            # Variantes du terme
+            if "variantes" in definition:
+                text += "VARIANTES:\n"
+                text += self.format_variantes(
+                    definition["variantes"],
+                    initial_indent_level
+                )
+            # Synonymes
+            if "synonymes" in definition:
+                text += "SYNONYMES:\n"
+                text += self.format_synonymes(
+                    definition["synonymes"],
+                    initial_indent_level
+                )
+            # Historique
+            if "historique" in definition:
+                text += "HISTORIQUE:\n"
+                text += self.format_historique(
+                    definition["historique"],
+                    initial_indent_level
+                )
+            # Étymologie
+            if "etymologie" in definition:
+                text += "ÉTYMOLOGIE:\n"
+                text += self.format_etymologies(
+                    definition["etymologie"],
+                    initial_indent_level
+                )
+
         return text
-
-
-    def format_html(self):
-        pass
 
 
     def __repr__(self):
