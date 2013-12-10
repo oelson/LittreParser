@@ -2,7 +2,7 @@
 
 __all__ = ["parser", "entry"]
 
-import textwrap
+from textwrap import TextWrapper
 import xml.etree.ElementTree as ET
 
 from unidecode import unidecode
@@ -176,11 +176,12 @@ class entry:
                     s_text = s_text.rstrip()
                     subtext += s_text
                 # les sous-parties peuvent contenir des citations
-                citations = self.get_citations(i_)
-                variante["indent"].append({
-                    "text": subtext,
-                    "cit": citations
-                })
+                if not no_quotes:
+                    citations = self.get_citations(i_)
+                    variante["indent"].append({
+                        "text": subtext,
+                        "cit": citations
+                    })
             variantes.append(variante)
         return variantes
 
@@ -312,9 +313,29 @@ class entry_formatter:
     # Nombre d'espace par niveau d'indentation
     _indent_factor = 2
 
+    # Découpage propre du texte
+    _display_width = 78
 
-    def __init__(self, entries):
+
+    def __init__(self, entries, fit_text=True):
         self.entries = entries
+        self.fit_text = fit_text
+        self.tw = TextWrapper(
+            width=self._display_width,
+            # l'indentation initiale sera toujours générée par /list_item/
+            initial_indent = ""
+        )
+
+
+    def fill(self, text, subsequent_indent=0):
+        """
+        Retourne le texte passé en paramètre coupé au mot près à la largeur
+        définie comme constante /_display_width/.
+        Le paramètre /subsequent_indent/ est la taille du préfixe du texte,
+        typiquement la taille de la liste à puce (espaces préc. compris).
+        """
+        self.tw.subsequent_indent = self._nbsp*subsequent_indent
+        return self.tw.fill(text)
 
 
     def list_item(self, level=2, li_type=0, li_count=-1):
@@ -348,76 +369,100 @@ class entry_formatter:
         Formatte une citation en texte simple.
         """
         li = self.list_item(level, li_style)
-        c_text = self._citation_format.format(
+        cit = self._citation_format.format(
             cit["aut"],
             cit["ref"],
             cit["text"]
         )
-        return li + c_text + "\n"
+        text = li + cit
+        # Coupe le texte proprement si il dépasse
+        if self.fit_text:
+            text = self.fill(text, len(li))
+        return text + "\n"
 
 
     def format_variantes(self, variantes, base_indent_level=1):
         """
         Formatte les variantes en texte simple.
         """
-        text = ""
+        paragraph = ""
         for li_count, v_ in enumerate(variantes):
             # Construit un item de liste numérique
             if v_["num"] == -1:
                 li_index = li_count+1
             else:
                 li_index = v_["num"]
-            v = self.list_item(
-                base_indent_level,
-                -1,
-                li_index
-            )
-            v += v_["text"] + "\n"
+            li = self.list_item(base_indent_level, -1, li_index)
+            text = li + v_["text"]
+            # Coupe le texte proprement si il dépasse
+            if self.fit_text:
+                text = self.fill(text, len(li))
+            text +=  "\n"
             # Adjoint les éventuelles citations
             if "cit" in v_:
                 for c_ in v_["cit"]:
-                    v += self.format_citation(c_, base_indent_level+1, 0)
+                    text += self.format_citation(c_, base_indent_level+1, 0)
             # Adjoint les éventuelles sous-parties
-            for i_ in v_["indent"]:
-                v += self.list_item(base_indent_level+1, 0)
-                v += "{}\n".format(i_["text"])
+            for ind in v_["indent"]:
+                li = self.list_item(base_indent_level+1, 0)
+                _text = li + ind["text"]
+                # Coupe le texte proprement si il dépasse
+                if self.fit_text:
+                    _text = self.fill(_text, len(li))
+                text += _text + "\n"
                 # citations liées à la sous-partie
-                for c_ in i_["cit"]:
-                    v += self.format_citation(c_, base_indent_level+2, 1)
-            text += v
-        return text
+                for cit in ind["cit"]:
+                    text += self.format_citation(cit, base_indent_level+2, 1)
+            paragraph += text
+        return paragraph
 
 
     def format_synonymes(self, synonymes, base_indent_level=1):
         """
         Formatte une liste de synonymes en texte simple.
         """
-        text = ""
-        for s_ in synonymes:
-            text += self.list_item(base_indent_level, 1) + s_ + "\n"
-        return text
+        paragraph = ""
+        for syn in synonymes:
+            li = self.list_item(base_indent_level, 1)
+            text = li + syn
+            # Coupe le texte proprement si il dépasse
+            if self.fit_text:
+                text = self.fill(text, len(li))
+            paragraph += text + "\n"
+        return paragraph
 
 
     def format_historique(self, historique, base_indent_level=1):
         """
         Formatte une historique de définition en texte simple.
         """
-        text = ""
-        for h_ in historique:
-            text += self.list_item(base_indent_level, 0) + h_["date"] + "\n"
-            for c_ in h_["cit"]:
-                text += self.format_citation(c_, base_indent_level+1, 1)
-        return text
+        paragraph = ""
+        for his in historique:
+            li = self.list_item(base_indent_level, 0)
+            text = li + his["date"]
+            # Coupe le texte proprement si il dépasse
+            if self.fit_text:
+                text = self.fill(text, len(li))
+            text += "\n"
+            for cit in his["cit"]:
+                text += self.format_citation(cit, base_indent_level+1, 1)
+            paragraph += text
+        return paragraph
 
 
-    def format_etymologies(self, etymologie, base_indent_level=2):
+    def format_etymologies(self, etymologie, base_indent_level=1):
         """
         Formatte une liste d'étymologie en texte simple.
         """
-        text = ""
-        for e_ in etymologie:
-            text += self.list_item(base_indent_level, 0) + e_ + "\n"
-        return text
+        paragraph = ""
+        for ety in etymologie:
+            li = self.list_item(base_indent_level, 0)
+            text = li + ety
+            # Coupe le texte proprement si il dépasse
+            if self.fit_text:
+                text = self.fill(text, len(li))
+            paragraph += text + "\n"
+        return paragraph
 
 
     def format(self):
