@@ -128,13 +128,15 @@ class parser:
         dont les clés sont les indices de sens et les valeurs des entrées
         formattées sous forme d'arborescence.
         """
+        name = name.upper()
         definition = {
-            "terme": name.upper(),
+            "terme": name,
             "sens": {}
         }
-        for i, entry in enumerate(self.get_entries(name)):
+        for i, node in enumerate(self.get_entries(name)):
+            e = entry(name, node)
             key = entry.get_sens_id() or i
-            definition["sens"][key] = entry.format_as_dict(
+            definition["sens"][key] = e.format_as_dict(
                 no_quotes,
                 no_synonyms,
                 no_history,
