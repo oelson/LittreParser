@@ -72,21 +72,50 @@ class parser:
 
     def get_entries(self, name):
         """
-        Retourne un itérateur d'éléments de la classe "entry" correspondant au
-        mot passé en argument.
+        Retourne une liste de noeuds XML <entry> correspondant au terme donné.
+        Un terme peut correspondre à plusieurs entrées (sens multiples).
         TODO: récupérer une liste de mots proches en cas d'échec (mauvais accents, faute de frappe, etc...)
         """
-        # récupère le parseur adéquat
         name = name.upper()
-        letter = name[0]
-        p = self.get_parser(letter)
+        # récupère le parseur adéquat
+        p = self.get_parser(name[0])
         # Une entrée peut avoir plusieurs "sens" et par conséquent être
         # dupliquée
-        for node in p.iterfind("./entree[@terme='{}']".format(name)):
-            if node is None:
-                raise EntryNotFound("the entry \"{}\" does not exist".format(name))
-            yield entry(name, node)
+        entries = []
+        for node in p.iterfind("./entree"):
+            terme = node.attrib["terme"]
+            # Cherche à établir une correspondance entre le masculin et le
+            # féminin
+            mal, fem = self.build_female(terme)
+            if name == mal or name == fem:
+                entries.append(node)
+        if len(entries) == 0:
+            raise EntryNotFound("the entry \"{}\" does not exist".format(name))
+        return entries
 
+    def build_female(self, word):
+        """
+        Construit le féminin d'un terme à partir de son masculin et de son
+        suffixe féminin.
+        """
+        # extrait le radical (avec la marque du masculin) et le suffixe féminin
+        values = word.split(",")
+        rad = values[0].strip()
+        # le terme est simple
+        if len(values) == 1 or not values[1]:
+            fem = ""
+        # le terme est double
+        else:
+            fem_suffix = values[1].strip()
+            # la première lettre du suffixe féminin doit
+            # concorder avec celle du suffixe masculin
+            first_fem_letter = fem_suffix[0]
+            # extrait le radical brut (enlève le masculin)
+            masc_pos = rad.rfind(first_fem_letter)
+            prefix = rad[:masc_pos]
+            # construit le féminin
+            fem = prefix + fem_suffix
+        return rad, fem
 
     def get_entries_as_dict(self,
                             name,
